@@ -5,44 +5,34 @@ use js_sys::Function;
 use snake::{Direction, SnakeGame};
 use std::{cell::RefCell, rc::Rc};
 use wasm_bindgen::{closure::Closure, prelude::wasm_bindgen, JsCast, UnwrapThrowExt};
-use web_sys::{window, HtmlElement, KeyboardEvent};
+use web_sys::{window, Document, HtmlElement, KeyboardEvent};
+
+const WIDTH: usize = 10;
+const HEIGHT: usize = 10;
 
 thread_local! {
-    static GAME: Rc<RefCell<SnakeGame>> = Rc::new(RefCell::new(SnakeGame::new(10, 10)));
-
-    static HANDLE_TICK: Closure<dyn FnMut()> = Closure::wrap(Box::new(|| {
-        GAME.with(|game| game.borrow_mut().tick());
-        render();
-    }) as Box<dyn FnMut()>);
+    static GAME: Rc<RefCell<SnakeGame>> = Rc::new(RefCell::new(SnakeGame::new(WIDTH, HEIGHT)));
 
     static HANDLE_KEYDOWN: Closure<dyn FnMut(KeyboardEvent)> =
     Closure::wrap(Box::new(|event: KeyboardEvent| GAME.with(|game| {
         let direction = match &event.key()[..] {
-            "ArrowUp" => Some(Direction::Up),
-            "ArrowRight" => Some(Direction::Right),
-            "ArrowDown" => Some(Direction::Down),
-            "ArrowLeft" => Some(Direction::Left),
+            "w" => Some(Direction::Up),
+            "d" => Some(Direction::Right),
+            "s" => Some(Direction::Down),
+            "a" => Some(Direction::Left),
             _ => None,
         };
 
         if let Some(direction) = direction {
             game.borrow_mut().change_direction(direction);
         }
-    })) as Box<dyn FnMut(KeyboardEvent)>)
+    })) as Box<dyn FnMut(KeyboardEvent)>);
+
+    static DOCUMENT: Rc<RefCell<Document>> = Rc::new(RefCell::new(window().unwrap_throw().document().unwrap_throw()));
 }
 
 #[wasm_bindgen(start)]
 pub fn main() {
-    HANDLE_TICK.with(|tick_closure| {
-        window()
-            .unwrap_throw()
-            .set_interval_with_callback_and_timeout_and_arguments_0(
-                tick_closure.as_ref().dyn_ref::<Function>().unwrap_throw(),
-                200,
-            )
-            .unwrap_throw()
-    });
-
     HANDLE_KEYDOWN.with(|handle_keydown| {
         window()
             .unwrap_throw()
@@ -53,13 +43,8 @@ pub fn main() {
             .unwrap_throw();
     });
 
-    render();
-}
-
-pub fn render() {
-    GAME.with(|game| {
-        let game = game.borrow();
-        let document = window().unwrap_throw().document().unwrap_throw();
+    DOCUMENT.with(|document| {
+        let document = document.borrow();
         let root_container = document
             .get_element_by_id("root")
             .unwrap_throw()
@@ -67,9 +52,6 @@ pub fn render() {
             .unwrap_throw();
 
         root_container.set_inner_html("");
-
-        let width = game.width;
-        let height = game.height;
 
         root_container
             .style()
@@ -80,13 +62,12 @@ pub fn render() {
             .style()
             .set_property(
                 "grid-template",
-                &format!("repeat({}, auto) / repeat({}, auto)", height, width),
+                &format!("repeat({}, auto) / repeat({}, auto)", HEIGHT, WIDTH),
             )
             .unwrap_throw();
 
-        for y in 0..height {
-            for x in 0..width {
-                let pos = (x, y);
+        for y in 0..HEIGHT {
+            for x in 0..WIDTH {
                 let field_element = document
                     .create_element("div")
                     .unwrap_throw()
@@ -94,21 +75,49 @@ pub fn render() {
                     .unwrap_throw();
 
                 field_element.set_class_name("field");
-
-                field_element.set_inner_text({
-                    if pos == game.food {
-                        "🍎"
-                    } else if game.snake.get(0) == Some(&pos) {
-                        "❇️"
-                    } else if game.snake.contains(&pos) {
-                        "🟩"
-                    } else {
-                        " "
-                    }
-                });
-
+                field_element.set_id(&format!("field-{}-{}", x, y));
+                field_element.set_inner_text(" ");
+                field_element.style().set_css_text(
+                    "width: 1rem; height: 1rem; line-height: 1rem; text-indent: -0.2rem;",
+                );
                 root_container.append_child(&field_element).unwrap_throw();
             }
         }
+    });
+}
+
+#[wasm_bindgen(js_name = render)]
+pub fn render() {
+    GAME.with(|game| {
+        DOCUMENT.with(|document| {
+            // Get the game and tick it.
+            let mut game = game.borrow_mut();
+            game.tick();
+
+            // Get the document and update it.
+            let document = document.borrow_mut();
+            for y in 0..HEIGHT {
+                for x in 0..WIDTH {
+                    let pos = (x, y);
+                    let field_element = document
+                        .get_element_by_id(&format!("field-{}-{}", x, y))
+                        .unwrap_throw()
+                        .dyn_into::<HtmlElement>()
+                        .unwrap_throw();
+
+                    field_element.set_inner_text({
+                        if pos == game.food {
+                            "🍎"
+                        } else if game.snake.get(0) == Some(&pos) {
+                            "❇️"
+                        } else if game.snake.contains(&pos) {
+                            "🟩"
+                        } else {
+                            " "
+                        }
+                    });
+                }
+            }
+        });
     });
 }

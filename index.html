@@ -14,25 +14,22 @@
       #root {
         border: 1px solid grey;
       }
-
-      .field {
-        width: 1rem;
-        height: 1rem;
-        line-height: 1rem;
-        text-indent: -0.2rem;
-      }
     </style>
   </head>
   <body>
     <div id="root"></div>
     <script type="module">
-      import init from './pkg/snake.js'
+      import init, { render } from './pkg/snake.js';
 
       async function main() {
-        await init()
+        await init();
+
+        setInterval(() => {
+          render();
+        }, 200);
       }
 
-      main()
+      main();
     </script>
   </body>
 </html>
