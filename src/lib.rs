@@ -8,7 +8,7 @@ use wasm_bindgen::{closure::Closure, prelude::wasm_bindgen, JsCast, UnwrapThrowE
 use web_sys::{window, HtmlElement, KeyboardEvent};
 
 thread_local! {
-    static GAME: Rc<RefCell<SnakeGame>> = Rc::new(RefCell::new(SnakeGame::new(10, 10)));
+    static GAME: Rc<RefCell<SnakeGame>> = Rc::new(RefCell::new(SnakeGame::new(15, 15)));
 
     static HANDLE_TICK: Closure<dyn FnMut()> = Closure::wrap(Box::new(|| {
         GAME.with(|game| game.borrow_mut().tick());
@@ -18,10 +18,10 @@ thread_local! {
     static HANDLE_KEYDOWN: Closure<dyn FnMut(KeyboardEvent)> =
     Closure::wrap(Box::new(|event: KeyboardEvent| GAME.with(|game| {
         let direction = match &event.key()[..] {
-            "ArrowUp" => Some(Direction::Up),
-            "ArrowRight" => Some(Direction::Right),
-            "ArrowDown" => Some(Direction::Down),
-            "ArrowLeft" => Some(Direction::Left),
+            "w" => Some(Direction::Up),
+            "d" => Some(Direction::Right),
+            "s" => Some(Direction::Down),
+            "a" => Some(Direction::Left),
             _ => None,
         };
 
@@ -33,6 +33,11 @@ thread_local! {
 
 #[wasm_bindgen(start)]
 pub fn main() {
+    render();
+}
+
+#[wasm_bindgen(js_name = launch)]
+pub fn launch() {
     HANDLE_TICK.with(|tick_closure| {
         window()
             .unwrap_throw()
@@ -52,8 +57,11 @@ pub fn main() {
             )
             .unwrap_throw();
     });
+}
 
-    render();
+#[wasm_bindgen(js_name = reset)]
+pub fn reset() {
+    GAME.with(|game| game.replace(SnakeGame::new(15, 15)));
 }
 
 pub fn render() {
@@ -93,7 +101,25 @@ pub fn render() {
                     .dyn_into::<HtmlElement>()
                     .unwrap_throw();
 
-                field_element.set_class_name("field");
+                field_element
+                    .style()
+                    .set_property("width", "1.2rem")
+                    .unwrap_throw();
+
+                field_element
+                    .style()
+                    .set_property("height", "1.2rem")
+                    .unwrap_throw();
+
+                field_element
+                    .style()
+                    .set_property("line-height", "1rem")
+                    .unwrap_throw();
+
+                field_element
+                    .style()
+                    .set_property("text-indent", "-0.2rem")
+                    .unwrap_throw();
 
                 field_element.set_inner_text({
                     if pos == game.food {

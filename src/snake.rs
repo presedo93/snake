@@ -59,7 +59,7 @@ impl SnakeGame {
     }
 
     pub fn tick(&mut self) {
-        if self.finished && self.snake.len() == 0 {
+        if self.finished && self.snake.is_empty() {
             return;
         }
 
