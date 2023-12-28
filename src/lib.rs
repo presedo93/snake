@@ -31,12 +31,7 @@ thread_local! {
     })) as Box<dyn FnMut(KeyboardEvent)>)
 }
 
-#[wasm_bindgen(start)]
-pub fn main() {
-    render();
-}
-
-#[wasm_bindgen(js_name = launch)]
+#[wasm_bindgen(js_name = startSnake)]
 pub fn launch() {
     HANDLE_TICK.with(|tick_closure| {
         window()
@@ -59,11 +54,12 @@ pub fn launch() {
     });
 }
 
-#[wasm_bindgen(js_name = reset)]
+#[wasm_bindgen(js_name = resetSnake)]
 pub fn reset() {
     GAME.with(|game| game.replace(SnakeGame::new(15, 15)));
 }
 
+#[wasm_bindgen(js_name = renderBoard)]
 pub fn render() {
     GAME.with(|game| {
         let game = game.borrow();
